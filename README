@@ -1,4 +1,4 @@
-This repository contains code for a vertex efficiency and track matching study.  
+This repository contains code for an offline study of dilepton triggers.  
 It includes just a looper to run on CMS2 ntuples so far (in the "looper" subdir).
 
 To checkout this repository from github along with the others needed to run, follow these commands:
