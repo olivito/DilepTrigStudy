@@ -1,0 +1,18 @@
+This repository contains code for a vertex efficiency and track matching study.  
+It includes just a looper to run on CMS2 ntuples so far (in the "looper" subdir).
+
+To checkout this repository from github along with the others needed to run, follow these commands:
+
+git clone git@github.com:olivito/DilepTrigStudy.git
+cd DilepTrigStudy/
+git clone git@github.com:cmstas/CORE.git
+git clone git@github.com:cmstas/Tools.git
+cmsrel CMSSW_5_3_2_patch4
+cd CMSSW_5_3_2_patch4/src
+cmsenv
+cd ../../looper
+cp CMS2.cc CMS2.h ../CORE
+make
+
+And for more info on the snt github setup, see our twiki:
+http://www.t2.ucsd.edu/tastwiki/bin/view/CMS/GitHubInstructions
