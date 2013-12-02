@@ -19,11 +19,11 @@
 bool verbose              = false;
 bool doTenPercent         = false;
 bool doLowerPtThresh      = false;
-bool doEM                 = true;
+bool doEM                 = false;
 bool doME                 = false;
 bool requireTrigMatch     = true;
 bool doSS                 = false;
-bool doOS                 = true;
+bool doOS                 = false;
 
 using namespace std;
 using namespace tas;
@@ -121,7 +121,7 @@ void dilepStudyLooper::closeOutput()
 /* ------------------------------------------------------------------------- */
 /* ------------------------------------------------------------------------- */
 
-int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
+int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix, int sign, int em)
 
 {
 
@@ -162,6 +162,33 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
   }
 
   if( doTenPercent ) cout << "Processing 10% of MC" << endl;
+
+  if ( sign == 1 ) {
+    doSS = true;
+    doOS = false;
+    cout << "Doing SS only" << endl;
+  } else if (sign == 2) {
+    doSS = false;
+    doOS = true;
+    cout << "Doing OS only" << endl;
+  } else {
+    doSS = false;
+    doOS = false;
+    cout << "Doing both OS and SS only" << endl;
+  }
+
+  if ( em == 1 ) {
+    doEM = true;
+    doME = false;
+    cout << "Doing EM only" << endl;
+  } else if (em == 2) {
+    doEM = false;
+    doME = true;
+    cout << "Doing ME only" << endl;
+  } else {
+    doEM = true;
+    doME = true;
+  }
 
   ptthresh_high = 17.;
   ptthresh_low = 8.;
@@ -894,8 +921,11 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	std::vector<LorentzVector> trigp4 = hlt_trigObjs_p4()[trigidx];
 	std::vector<int> trigid = hlt_trigObjs_id()[trigidx];
 
+	LorentzVector el_hlt;
+	LorentzVector mu_hlt;
 	for (unsigned int ihlt = 0; ihlt < trigp4.size(); ++ihlt){
 	  if (trigid.at(ihlt) == 82) { // HLT code for electron
+	    el_hlt = trigp4.at(ihlt);
 	    h_em_el_hlt_pt->Fill(trigp4.at(ihlt).pt());
 	    h_em_el_hlt_eta->Fill(trigp4.at(ihlt).eta());
 	    if (pt_lead_el < 0.) {
@@ -903,6 +933,7 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	      h_em_el_hlt_noreco_eta->Fill(trigp4.at(ihlt).eta());
 	    }
 	  } else if (trigid.at(ihlt) == 83) { // HLT code for muon
+	    mu_hlt = trigp4.at(ihlt);
 	    h_em_mu_hlt_pt->Fill(trigp4.at(ihlt).pt());
 	    h_em_mu_hlt_eta->Fill(trigp4.at(ihlt).eta());
 	    if (pt_lead_mu < 0.) {
@@ -911,6 +942,16 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	    }
 	  }
 	} // loop on hlt objects
+
+	if (el_hlt.pt() > 0. && mu_hlt.pt() > 0.) {
+	  LorentzVector dilep = el_hlt+mu_hlt;
+	  h_em_hlt_mll->Fill(dilep.M());
+	  h_em_hlt_dr->Fill(dRbetweenVectors(el_hlt,mu_hlt));
+	  if (pt_lead_el < 0. || pt_lead_mu < 0.) {
+	    h_em_hlt_noreco_mll->Fill(dilep.M());
+	    h_em_hlt_noreco_dr->Fill(dRbetweenVectors(el_hlt,mu_hlt));
+	  }
+	}
 
       } // if em trigger
 
@@ -926,8 +967,11 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	std::vector<LorentzVector> trigp4 = hlt_trigObjs_p4()[trigidx];
 	std::vector<int> trigid = hlt_trigObjs_id()[trigidx];
 
+	LorentzVector el_hlt;
+	LorentzVector mu_hlt;
 	for (unsigned int ihlt = 0; ihlt < trigp4.size(); ++ihlt){
 	  if (abs(trigid.at(ihlt)) == 82) { // HLT code for electron
+	    el_hlt = trigp4.at(ihlt);
 	    h_me_el_hlt_pt->Fill(trigp4.at(ihlt).pt());
 	    h_me_el_hlt_eta->Fill(trigp4.at(ihlt).eta());
 	    if (pt_lead_el < 0.) {
@@ -935,6 +979,7 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	      h_me_el_hlt_noreco_eta->Fill(trigp4.at(ihlt).eta());
 	    }
 	  } else if (abs(trigid.at(ihlt)) == 83) { // HLT code for muon
+	    mu_hlt = trigp4.at(ihlt);
 	    h_me_mu_hlt_pt->Fill(trigp4.at(ihlt).pt());
 	    h_me_mu_hlt_eta->Fill(trigp4.at(ihlt).eta());
 	    if (pt_lead_mu < 0.) {
@@ -943,6 +988,16 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	    }
 	  }
 	} // loop on hlt objects
+
+	if (el_hlt.pt() > 0. && mu_hlt.pt() > 0.) {
+	  LorentzVector dilep = el_hlt+mu_hlt;
+	  h_me_hlt_mll->Fill(dilep.M());
+	  h_me_hlt_dr->Fill(dRbetweenVectors(mu_hlt,el_hlt));
+	  if (pt_lead_el < 0. || pt_lead_mu < 0.) {
+	    h_me_hlt_noreco_mll->Fill(dilep.M());
+	    h_me_hlt_noreco_dr->Fill(dRbetweenVectors(mu_hlt,el_hlt));
+	  }
+	}
 
       } // if me trigger
 
@@ -1100,21 +1155,29 @@ void dilepStudyLooper::BookHistos(const TString& prefix)
   h_em_mu_hlt_pt = new TH1F(Form("%s_em_mu_hlt_pt",prefix.Data()),";HLT muon p_{T} [GeV]",100,0.,100.);
   h_em_el_hlt_eta = new TH1F(Form("%s_em_el_hlt_eta",prefix.Data()),";HLT electron #eta",100,-3.,3.);
   h_em_mu_hlt_eta = new TH1F(Form("%s_em_mu_hlt_eta",prefix.Data()),";HLT muon #eta",100,-3.,3.);
+  h_em_hlt_mll = new TH1F(Form("%s_em_hlt_mll",prefix.Data()),";HLT m_{e#mu} [GeV]",150,0.,150.);
+  h_em_hlt_dr = new TH1F(Form("%s_em_hlt_dr",prefix.Data()),";HLT #DeltaR(e,#mu)",600,0.,6.);
 
   h_me_mu_hlt_pt = new TH1F(Form("%s_me_mu_hlt_pt",prefix.Data()),";HLT muon p_{T} [GeV]",100,0.,100.);
   h_me_el_hlt_pt = new TH1F(Form("%s_me_el_hlt_pt",prefix.Data()),";HLT electron p_{T} [GeV]",100,0.,100.);
   h_me_mu_hlt_eta = new TH1F(Form("%s_me_mu_hlt_eta",prefix.Data()),";HLT muon #eta",100,-3.,3.);
   h_me_el_hlt_eta = new TH1F(Form("%s_me_el_hlt_eta",prefix.Data()),";HLT electron #eta",100,-3.,3.);
+  h_me_hlt_mll = new TH1F(Form("%s_me_hlt_mll",prefix.Data()),";HLT m_{#mue} [GeV]",150,0.,150.);
+  h_me_hlt_dr = new TH1F(Form("%s_me_hlt_dr",prefix.Data()),";HLT #DeltaR(#mu,e)",600,0.,6.);
 
   h_em_el_hlt_noreco_pt = new TH1F(Form("%s_em_el_hlt_noreco_pt",prefix.Data()),";HLT electron p_{T} [GeV]",100,0.,100.);
   h_em_mu_hlt_noreco_pt = new TH1F(Form("%s_em_mu_hlt_noreco_pt",prefix.Data()),";HLT muon p_{T} [GeV]",100,0.,100.);
   h_em_el_hlt_noreco_eta = new TH1F(Form("%s_em_el_hlt_noreco_eta",prefix.Data()),";HLT electron #eta",100,-3.,3.);
   h_em_mu_hlt_noreco_eta = new TH1F(Form("%s_em_mu_hlt_noreco_eta",prefix.Data()),";HLT muon #eta",100,-3.,3.);
+  h_em_hlt_noreco_mll = new TH1F(Form("%s_em_hlt_noreco_mll",prefix.Data()),";HLT m_{e#mu} [GeV]",150,0.,150.);
+  h_em_hlt_noreco_dr = new TH1F(Form("%s_em_hlt_noreco_dr",prefix.Data()),";HLT #DeltaR(e,#mu)",600,0.,6.);
 
   h_me_mu_hlt_noreco_pt = new TH1F(Form("%s_me_mu_hlt_noreco_pt",prefix.Data()),";HLT muon p_{T} [GeV]",100,0.,100.);
   h_me_el_hlt_noreco_pt = new TH1F(Form("%s_me_el_hlt_noreco_pt",prefix.Data()),";HLT electron p_{T} [GeV]",100,0.,100.);
   h_me_mu_hlt_noreco_eta = new TH1F(Form("%s_me_mu_hlt_noreco_eta",prefix.Data()),";HLT muon #eta",100,-3.,3.);
   h_me_el_hlt_noreco_eta = new TH1F(Form("%s_me_el_hlt_noreco_eta",prefix.Data()),";HLT electron #eta",100,-3.,3.);
+  h_me_hlt_noreco_mll = new TH1F(Form("%s_me_hlt_noreco_mll",prefix.Data()),";HLT m_{#mue} [GeV]",150,0.,150.);
+  h_me_hlt_noreco_dr = new TH1F(Form("%s_me_hlt_noreco_dr",prefix.Data()),";HLT #DeltaR(#mu,e)",600,0.,6.);
 
   h_mm_overlap = new TH1F(Form("%s_mm_overlap",prefix.Data()),";Triggers Passed",3,-0.5,2.5);
   h_mm_overlap->GetXaxis()->SetBinLabel(1,"#mu#mu only");

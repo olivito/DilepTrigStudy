@@ -36,7 +36,7 @@ public:
   dilepStudyLooper();
   ~dilepStudyLooper() {}
 
-  int  ScanChain(TChain *chain, const TString& prefix = "" );
+  int  ScanChain(TChain *chain, const TString& prefix = "", int sign = 0, int em = 0 );
   void BookHistos (const TString& prefix);
   void InitBaby();
   float electronPFiso(const unsigned int index, const bool cor = false);
@@ -159,21 +159,29 @@ private:
   TH1F* h_em_mu_hlt_pt;
   TH1F* h_em_el_hlt_eta;
   TH1F* h_em_mu_hlt_eta;
+  TH1F* h_em_hlt_dr;
+  TH1F* h_em_hlt_mll;
 
   TH1F* h_me_mu_hlt_pt;
   TH1F* h_me_el_hlt_pt;
   TH1F* h_me_mu_hlt_eta;
   TH1F* h_me_el_hlt_eta;
+  TH1F* h_me_hlt_dr;
+  TH1F* h_me_hlt_mll;
 
   TH1F* h_em_el_hlt_noreco_pt;
   TH1F* h_em_mu_hlt_noreco_pt;
   TH1F* h_em_el_hlt_noreco_eta;
   TH1F* h_em_mu_hlt_noreco_eta;
+  TH1F* h_em_hlt_noreco_dr;
+  TH1F* h_em_hlt_noreco_mll;
 
   TH1F* h_me_mu_hlt_noreco_pt;
   TH1F* h_me_el_hlt_noreco_pt;
   TH1F* h_me_mu_hlt_noreco_eta;
   TH1F* h_me_el_hlt_noreco_eta;
+  TH1F* h_me_hlt_noreco_dr;
+  TH1F* h_me_hlt_noreco_mll;
 
   TH1F* h_mm_overlap;
 

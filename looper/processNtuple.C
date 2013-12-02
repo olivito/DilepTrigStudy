@@ -33,7 +33,7 @@ void pickSkimIfExists( TChain *ch, const std::string& base, const std::string& s
   return;
 }
 
-void processNtuple( TString outfileid = "me_test", TString infile = "/hadoop/cms/store/group/snt/papers2012/Data2012/CMSSW_5_3_2_patch4_V05-03-24/MuEG_Run2012D-PromptReco-v1_AOD/merged/merged_ntuple_6.root" )
+void processNtuple( TString outfileid = "me_test", TString infile = "/hadoop/cms/store/group/snt/papers2012/Data2012/CMSSW_5_3_2_patch4_V05-03-24/MuEG_Run2012D-PromptReco-v1_AOD/merged/merged_ntuple_6.root", int sign = 0, int em = 0 )
 {
 
   //---------------------------------------------------------------
@@ -130,7 +130,7 @@ void processNtuple( TString outfileid = "me_test", TString infile = "/hadoop/cms
   //set luminosity to scale to
   //--------------------------------
 
-  looper->ScanChain(chain, TString(sample));
+  looper->ScanChain(chain, TString(sample), sign, em);
 
   //  gSystem->Exit(0);
  
