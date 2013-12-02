@@ -1369,7 +1369,9 @@ bool dilepStudyLooper::objectPassTrigger(const LorentzVector &obj, const TString
     return false;
   }
 
-  std::vector<LorentzVector> trigp4 = hlt_trigObjs_p4()[findTriggerIndex(exact_trigname)];
+  int trigidx = findTriggerIndex(exact_trigname);
+  std::vector<LorentzVector> trigp4 = hlt_trigObjs_p4()[trigidx];
+  std::vector<int> trigid = hlt_trigObjs_id()[trigidx];
 
   if( trigp4.size() == 0 ) return false;
 
