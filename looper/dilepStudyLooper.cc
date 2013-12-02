@@ -22,6 +22,8 @@ bool doLowerPtThresh      = false;
 bool doEM                 = true;
 bool doME                 = false;
 bool requireTrigMatch     = true;
+bool doSS                 = false;
+bool doOS                 = true;
 
 using namespace std;
 using namespace tas;
@@ -129,6 +131,7 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
   bool isEE = false;
   bool isEM = false;
   bool isMM = false;
+  bool isDYMC = false;
   if( prefix.Contains("data") || prefix.Contains("2012") 
       || prefix.Contains("dimu") || prefix.Contains("diel")
       || prefix.Contains("mueg") ){
@@ -153,7 +156,8 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 
   if ( prefix.Contains("DYtot") ) {
     std::cout << "Running on DY MC" << std::endl;
-    isEE = true;
+    isDYMC = true;
+    //    isEE = true;
     isMM = true;
   }
 
@@ -346,6 +350,25 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
       }
 
       //---------------------------------------------
+      // gen selection for DY MC
+      //---------------------------------------------
+
+      if (isDYMC) {
+	int nel = 0;
+	int nmu = 0;
+	// require 2 gen muons, to study Z->mm
+	for (unsigned int igen = 0; igen < genps_p4().size(); ++igen) {
+	  if (genps_status().at(igen) != 3) continue;
+	  int id = genps_id().at(igen);
+	  if ((abs(id) != 11) && (abs(id) != 13)) continue;
+	  if (abs(genps_id_mother().at(igen)) != 23) continue;
+	  if (abs(id) == 11) ++nel;
+	  else if (abs(id) == 13) ++nmu;
+	}
+	if (nmu < 2) continue;
+      }
+
+      //---------------------------------------------
       // trigger selection
       //---------------------------------------------
       bool pass_trig_mm        = passUnprescaledHLTTriggerPattern(trigname_mm.Data())                                     ? 1 : 0;
@@ -511,6 +534,14 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
       if ((nel20_loose_iso >= minlep) || (nel10_loose_iso > 0)) el_subl_flags.push_back(6);
       if ((nel20_med_iso >= minlep) || (nel10_med_iso > 0)) el_subl_flags.push_back(7);
 
+      // check for SS if that's what we're running
+      if ((doSS || doOS) && isEE) {
+	if (pt_lead_el <= 0. || pt_subl_el <= 0.) continue;
+	bool isOS = bool(els_charge().at(idx_lead_el) != els_charge().at(idx_subl_el));
+	  if (doSS && isOS) continue;
+	  else if (doOS && !isOS) continue;
+      }
+
       // pt hists
       if (pt_lead_el > 0.) {
 	h_el_lead_pt->Fill(pt_lead_el);
@@ -549,12 +580,18 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
       int nmu20_cand = 0;
       int nmu20_tight = 0;
       int nmu20_iso = 0;
+      int nmu20_iso04 = 0;
+      int nmu20_iso07 = 0;
+      int nmu20_iso10 = 0;
       int nmu20_tight_iso = 0;
 
       std::vector<int> mu_subl_flags;
       int nmu10_cand = 0;
       int nmu10_tight = 0;
       int nmu10_iso = 0;
+      int nmu10_iso04 = 0;
+      int nmu10_iso07 = 0;
+      int nmu10_iso10 = 0;
       int nmu10_tight_iso = 0;
 
       float pt_lead_mu = -1.;
@@ -656,8 +693,23 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	float iso_cor = muonPFiso(imu,true);
 	bool pass_iso = bool(iso_cor < 0.15);
 
+	// different iso variables
+	float pfchiso = cms2.mus_isoR03_pf_ChargedHadronPt().at(imu);
+	isovals chisovals = muonChIsoValuePF2012(imu);
+
+	h_mu_pfchiso->Fill(pfchiso/pt);
+	h_mu_pfchiso_minus_chiso->Fill(pfchiso - chisovals.chiso00);
+	h_mu_chiso04->Fill(chisovals.chiso04/pt);
+	h_mu_chiso07->Fill(chisovals.chiso07/pt);
+	h_mu_chiso10->Fill(chisovals.chiso10/pt);
+
+	bool pass_iso04 = (chisovals.chiso07/pt < 0.4);
+	bool pass_iso07 = (chisovals.chiso07/pt < 0.7);
+	bool pass_iso10 = (chisovals.chiso07/pt < 1.0);
+
 	if (pt < ptthresh_low) continue;
 
+	//	if (pass_iso04) {
 	if (pass_id && pass_iso) {
 	  if (pt > pt_lead_tiso_mu) {
 	    pt_subl_tiso_mu = pt_lead_tiso_mu;
@@ -675,6 +727,9 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	if (pt > ptthresh_high) {
 	  ++nmu20_cand;
 	  if (pass_id)  ++nmu20_tight;
+	  if (pass_iso10)  ++nmu20_iso10;
+	  if (pass_iso07)  ++nmu20_iso07;
+	  if (pass_iso04)  ++nmu20_iso04;
 	  if (pass_iso)  ++nmu20_iso;
 	  if (pass_id && pass_iso)  ++nmu20_tight_iso;
 	}
@@ -683,6 +738,9 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	else {
 	  ++nmu10_cand;
 	  if (pass_id) ++nmu10_tight;
+	  if (pass_iso10)  ++nmu10_iso10;
+	  if (pass_iso07)  ++nmu10_iso07;
+	  if (pass_iso04)  ++nmu10_iso04;
 	  if (pass_iso) ++nmu10_iso;
 	  if (pass_id && pass_iso) ++nmu10_tight_iso;
 	}
@@ -692,14 +750,36 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
       mu_lead_flags.push_back(0);
       if (nmu20_cand > 0) mu_lead_flags.push_back(1);
       if (nmu20_tight > 0) mu_lead_flags.push_back(2);
-      if (nmu20_iso > 0) mu_lead_flags.push_back(3);
-      if (nmu20_tight_iso > 0) mu_lead_flags.push_back(4);
+      if (nmu20_iso10 > 0) mu_lead_flags.push_back(3);
+      if (nmu20_iso07 > 0) mu_lead_flags.push_back(4);
+      if (nmu20_iso04 > 0) mu_lead_flags.push_back(5);
+      if (nmu20_iso > 0) mu_lead_flags.push_back(6);
+      if (nmu20_tight_iso > 0) mu_lead_flags.push_back(7);
 
       mu_subl_flags.push_back(0);
       if ((nmu20_cand >= minlep) || (nmu10_cand > 0)) mu_subl_flags.push_back(1);
       if ((nmu20_tight >= minlep) || (nmu10_tight > 0)) mu_subl_flags.push_back(2);
-      if ((nmu20_iso >= minlep) || (nmu10_iso > 0)) mu_subl_flags.push_back(3);
-      if ((nmu20_tight_iso >= minlep) || (nmu10_tight_iso > 0)) mu_subl_flags.push_back(4);
+      if ((nmu20_iso10 >= minlep) || (nmu10_iso10 > 0)) mu_subl_flags.push_back(3);
+      if ((nmu20_iso07 >= minlep) || (nmu10_iso07 > 0)) mu_subl_flags.push_back(4);
+      if ((nmu20_iso04 >= minlep) || (nmu10_iso04 > 0)) mu_subl_flags.push_back(5);
+      if ((nmu20_iso >= minlep) || (nmu10_iso > 0)) mu_subl_flags.push_back(6);
+      if ((nmu20_tight_iso >= minlep) || (nmu10_tight_iso > 0)) mu_subl_flags.push_back(7);
+
+      // check for SS if that's what we're running
+      if (doSS || doOS) {
+	if (isMM) {
+	  if (pt_lead_mu <= 0. || pt_subl_mu <= 0.) continue;
+	  bool isOS = bool(mus_charge().at(idx_lead_mu) != mus_charge().at(idx_subl_mu));
+	  if (doSS && isOS) continue;
+	  else if (doOS && !isOS) continue;
+	}
+	else if (isEM) {
+	  if (pt_lead_el <= 0. || pt_lead_mu <= 0.) continue;
+	  bool isOS = bool(els_charge().at(idx_lead_el) != mus_charge().at(idx_lead_mu));
+	  if (doSS && isOS) continue;
+	  else if (doOS && !isOS) continue;
+	}
+      }
 
       // pt hists
       if (pt_lead_mu > 0.) {
@@ -708,21 +788,37 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	if (pass_trig_em) {
 	  h_em_mu_pt->Fill(pt_lead_mu);
 	  h_em_mu_eta->Fill(mus_p4().at(idx_lead_mu).eta());
+	  if (pt_lead_el > 0.) {
+	    LorentzVector dilep =  els_p4().at(idx_lead_el) + mus_p4().at(idx_lead_mu);
+	    h_em_mll->Fill(dilep.M());
+	    h_em_dr->Fill(dRbetweenVectors(els_p4().at(idx_lead_el),mus_p4().at(idx_lead_mu)));
+	  }
 	  if ((nmu10_tight_iso > 0 || nmu20_tight_iso > 0) && (nel20_cand > 0)) {
 	    h_em_el_tiso_pt->Fill(pt_lead_el);
 	    h_em_el_tiso_eta->Fill(els_p4().at(idx_lead_el).eta());
 	    h_em_mu_tiso_pt->Fill(pt_lead_mu);
 	    h_em_mu_tiso_eta->Fill(mus_p4().at(idx_lead_mu).eta());
+	    LorentzVector dilep =  els_p4().at(idx_lead_el) + mus_p4().at(idx_lead_mu);
+	    h_em_tiso_mll->Fill(dilep.M());
+	    h_em_tiso_dr->Fill(dRbetweenVectors(els_p4().at(idx_lead_el),mus_p4().at(idx_lead_mu)));
 	  }
 	}
 	if (pass_trig_me) {
 	  h_me_mu_pt->Fill(pt_lead_mu);
 	  h_me_mu_eta->Fill(mus_p4().at(idx_lead_mu).eta());
+	  if (pt_lead_el > 0.) {
+	    LorentzVector dilep =  els_p4().at(idx_lead_el) + mus_p4().at(idx_lead_mu);
+	    h_me_mll->Fill(dilep.M());
+	    h_me_dr->Fill(dRbetweenVectors(mus_p4().at(idx_lead_mu),els_p4().at(idx_lead_el)));
+	  }
 	  if ((nmu20_tight_iso > 0) && (nel10_cand > 0 || nel20_cand > 0)) {
 	    h_me_el_tiso_pt->Fill(pt_lead_el);
 	    h_me_el_tiso_eta->Fill(els_p4().at(idx_lead_el).eta());
 	    h_me_mu_tiso_pt->Fill(pt_lead_mu);
 	    h_me_mu_tiso_eta->Fill(mus_p4().at(idx_lead_mu).eta());
+	    LorentzVector dilep =  els_p4().at(idx_lead_el) + mus_p4().at(idx_lead_mu);
+	    h_me_tiso_mll->Fill(dilep.M());
+	    h_me_tiso_dr->Fill(dRbetweenVectors(mus_p4().at(idx_lead_mu),els_p4().at(idx_lead_el)));
 	  }
 	}
       }
@@ -734,6 +830,7 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	float dr = dRbetweenVectors(mus_p4().at(idx_lead_mu),mus_p4().at(idx_subl_mu));
 	h_mu_dr->Fill(dr);
 	h_mm_mll_vs_dr->Fill(dr,dilep.M());
+	h_mm_chargeprod->Fill(mus_charge().at(idx_lead_mu) * mus_charge().at(idx_subl_mu));
 
 	//	if (dilep.M() < 1.0) {
 	if (dr < 0.1) {
@@ -801,7 +898,6 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	  if (trigid.at(ihlt) == 82) { // HLT code for electron
 	    h_em_el_hlt_pt->Fill(trigp4.at(ihlt).pt());
 	    h_em_el_hlt_eta->Fill(trigp4.at(ihlt).eta());
-	    //	    if (std::find(el_lead_flags.begin(),el_lead_flags.end(),1) == el_lead_flags.end()) {
 	    if (pt_lead_el < 0.) {
 	      h_em_el_hlt_noreco_pt->Fill(trigp4.at(ihlt).pt());
 	      h_em_el_hlt_noreco_eta->Fill(trigp4.at(ihlt).eta());
@@ -809,7 +905,6 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	  } else if (trigid.at(ihlt) == 83) { // HLT code for muon
 	    h_em_mu_hlt_pt->Fill(trigp4.at(ihlt).pt());
 	    h_em_mu_hlt_eta->Fill(trigp4.at(ihlt).eta());
-	    //	    if (std::find(mu_subl_flags.begin(),mu_subl_flags.end(),1) == mu_subl_flags.end()) {
 	    if (pt_lead_mu < 0.) {
 	      h_em_mu_hlt_noreco_pt->Fill(trigp4.at(ihlt).pt());
 	      h_em_mu_hlt_noreco_eta->Fill(trigp4.at(ihlt).eta());
@@ -835,7 +930,6 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	  if (abs(trigid.at(ihlt)) == 82) { // HLT code for electron
 	    h_me_el_hlt_pt->Fill(trigp4.at(ihlt).pt());
 	    h_me_el_hlt_eta->Fill(trigp4.at(ihlt).eta());
-	    //	    if (std::find(el_subl_flags.begin(),el_subl_flags.end(),1) == el_subl_flags.end()) {
 	    if (pt_lead_el < 0.) {
 	      h_me_el_hlt_noreco_pt->Fill(trigp4.at(ihlt).pt());
 	      h_me_el_hlt_noreco_eta->Fill(trigp4.at(ihlt).eta());
@@ -843,7 +937,6 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	  } else if (abs(trigid.at(ihlt)) == 83) { // HLT code for muon
 	    h_me_mu_hlt_pt->Fill(trigp4.at(ihlt).pt());
 	    h_me_mu_hlt_eta->Fill(trigp4.at(ihlt).eta());
-	    //	    if (std::find(mu_lead_flags.begin(),mu_lead_flags.end(),1) == mu_lead_flags.end()) {
 	    if (pt_lead_mu < 0.) {
 	      h_me_mu_hlt_noreco_pt->Fill(trigp4.at(ihlt).pt());
 	      h_me_mu_hlt_noreco_eta->Fill(trigp4.at(ihlt).eta());
@@ -933,7 +1026,7 @@ void dilepStudyLooper::BookHistos(const TString& prefix)
 
   const int max_nvtx = 40;
   const int nbins_el = 8;
-  const int nbins_mu = 5;
+  const int nbins_mu = 8;
 
   h_nvtx = new TH1F(Form("%s_nvtx",prefix.Data()),";N(vtx)",max_nvtx,0,max_nvtx);
 
@@ -954,6 +1047,7 @@ void dilepStudyLooper::BookHistos(const TString& prefix)
   h_mm_mll = new TH1F(Form("%s_mm_mll",prefix.Data()),";m_{#mu#mu} [GeV]",150,0.,150.);
   h_mu_dr = new TH1F(Form("%s_mu_dr",prefix.Data()),";muon #Delta R",650,0.,6.5);
   h_mm_mll_vs_dr = new TH2F(Form("%s_mm_mll_vs_dr",prefix.Data()),";muon #Delta R; m_{#mu#mu} [GeV]",650,0.,6.5,150,0.,150.);
+  h_mm_chargeprod = new TH1F(Form("%s_mm_chargeprod",prefix.Data()),";Q(mu1)*Q(mu2)",3,-1.,2.);
 
   h_mu_tiso_lead_pt = new TH1F(Form("%s_mu_tiso_lead_pt",prefix.Data()),";leading muon p_{T} [GeV]",100,0.,100.);
   h_mu_tiso_subl_pt = new TH1F(Form("%s_mu_tiso_subl_pt",prefix.Data()),";subleading muon p_{T} [GeV]",100,0.,100.);
@@ -968,25 +1062,39 @@ void dilepStudyLooper::BookHistos(const TString& prefix)
   h_mu_dup_lead_type = new TH1F(Form("%s_mu_dup_lead_type",prefix.Data()),";leading muon type",15,-0.5,14.5);
   h_mu_dup_subl_type = new TH1F(Form("%s_mu_dup_subl_type",prefix.Data()),";subleading muon type",15,-0.5,14.5);
 
+  h_mu_pfchiso = new TH1F(Form("%s_mu_pfchiso",prefix.Data()),";muon PF charged iso / pt",1000,0,2.0);
+  h_mu_pfchiso_minus_chiso = new TH1F(Form("%s_mu_pfchiso_minus_chiso",prefix.Data()),";muon PF charged iso - recomputed charged iso [GeV]",1000,-5.0,5.0);
+  h_mu_chiso04 = new TH1F(Form("%s_mu_chiso04",prefix.Data()),";muon PF charged iso / pt",1000,0,2.0);
+  h_mu_chiso07 = new TH1F(Form("%s_mu_chiso07",prefix.Data()),";muon PF charged iso / pt",1000,0,2.0);
+  h_mu_chiso10 = new TH1F(Form("%s_mu_chiso10",prefix.Data()),";muon PF charged iso / pt",1000,0,2.0);
+
   h_em_el_pt = new TH1F(Form("%s_em_el_pt",prefix.Data()),";electron p_{T} [GeV]",100,0.,100.);
   h_em_mu_pt = new TH1F(Form("%s_em_mu_pt",prefix.Data()),";muon p_{T} [GeV]",100,0.,100.);
   h_em_el_eta = new TH1F(Form("%s_em_el_eta",prefix.Data()),";electron #eta",100,-3.,3.);
   h_em_mu_eta = new TH1F(Form("%s_em_mu_eta",prefix.Data()),";muon #eta",100,-3.,3.);
+  h_em_mll = new TH1F(Form("%s_em_mll",prefix.Data()),";m_{e#mu} [GeV]",150,0.,150.);
+  h_em_dr = new TH1F(Form("%s_em_dr",prefix.Data()),";#DeltaR(e,#mu)",600,0.,6.);
 
   h_me_mu_pt = new TH1F(Form("%s_me_mu_pt",prefix.Data()),";muon p_{T} [GeV]",100,0.,100.);
   h_me_el_pt = new TH1F(Form("%s_me_el_pt",prefix.Data()),";electron p_{T} [GeV]",100,0.,100.);
   h_me_mu_eta = new TH1F(Form("%s_me_mu_eta",prefix.Data()),";muon #eta",100,-3.,3.);
   h_me_el_eta = new TH1F(Form("%s_me_el_eta",prefix.Data()),";electron #eta",100,-3.,3.);
+  h_me_mll = new TH1F(Form("%s_me_mll",prefix.Data()),";m_{#mue} [GeV]",150,0.,150.);
+  h_me_dr = new TH1F(Form("%s_me_dr",prefix.Data()),";#DeltaR(#mu,e)",600,0.,6.);
 
   h_em_el_tiso_pt = new TH1F(Form("%s_em_el_tiso_pt",prefix.Data()),";electron p_{T} [GeV]",100,0.,100.);
   h_em_mu_tiso_pt = new TH1F(Form("%s_em_mu_tiso_pt",prefix.Data()),";muon p_{T} [GeV]",100,0.,100.);
   h_em_el_tiso_eta = new TH1F(Form("%s_em_el_tiso_eta",prefix.Data()),";electron #eta",100,-3.,3.);
   h_em_mu_tiso_eta = new TH1F(Form("%s_em_mu_tiso_eta",prefix.Data()),";muon #eta",100,-3.,3.);
+  h_em_tiso_mll = new TH1F(Form("%s_em_tiso_mll",prefix.Data()),";m_{e#mu} [GeV]",150,0.,150.);
+  h_em_tiso_dr = new TH1F(Form("%s_em_tiso_dr",prefix.Data()),";#DeltaR(e,#mu)",600,0.,6.);
 
   h_me_mu_tiso_pt = new TH1F(Form("%s_me_mu_tiso_pt",prefix.Data()),";muon p_{T} [GeV]",100,0.,100.);
   h_me_el_tiso_pt = new TH1F(Form("%s_me_el_tiso_pt",prefix.Data()),";electron p_{T} [GeV]",100,0.,100.);
   h_me_mu_tiso_eta = new TH1F(Form("%s_me_mu_tiso_eta",prefix.Data()),";muon #eta",100,-3.,3.);
   h_me_el_tiso_eta = new TH1F(Form("%s_me_el_tiso_eta",prefix.Data()),";electron #eta",100,-3.,3.);
+  h_me_tiso_mll = new TH1F(Form("%s_me_tiso_mll",prefix.Data()),";m_{#mue} [GeV]",150,0.,150.);
+  h_me_tiso_dr = new TH1F(Form("%s_me_tiso_dr",prefix.Data()),";#DeltaR(#mu,e)",600,0.,6.);
 
   h_em_el_hlt_pt = new TH1F(Form("%s_em_el_hlt_pt",prefix.Data()),";HLT electron p_{T} [GeV]",100,0.,100.);
   h_em_mu_hlt_pt = new TH1F(Form("%s_em_mu_hlt_pt",prefix.Data()),";HLT muon p_{T} [GeV]",100,0.,100.);
@@ -1122,8 +1230,11 @@ void dilepStudyLooper::labelAxis(TH2F* h, int axis, int lep) {
     h_axis->SetBinLabel(1,"All");
     h_axis->SetBinLabel(2,"Cand");
     h_axis->SetBinLabel(3,"Tight");
-    h_axis->SetBinLabel(4,"Iso");
-    h_axis->SetBinLabel(5,"T+Iso");
+    h_axis->SetBinLabel(4,"Iso < 1.0");
+    h_axis->SetBinLabel(5,"Iso < 0.7");
+    h_axis->SetBinLabel(6,"Iso < 0.4");
+    h_axis->SetBinLabel(7,"Iso < 0.15");
+    h_axis->SetBinLabel(8,"T+Iso");
   }
 
   else {
@@ -1222,9 +1333,9 @@ int dilepStudyLooper::findTriggerIndex(const TString& trigName)
 
 TString dilepStudyLooper::triggerName(const TString& triggerPattern){
 
-  //-------------------------------------------------------                                                                                                                                                          
-  // get exact trigger name corresponding to given pattern                                                                                                                                                           
-  //-------------------------------------------------------                                                                                                                                                          
+  //-------------------------------------------------------
+  // get exact trigger name corresponding to given pattern
+  //-------------------------------------------------------
 
   bool    foundTrigger  = false;
   TString exact_hltname = "";
@@ -1271,5 +1382,51 @@ float dilepStudyLooper::getdphi( float phi1 , float phi2 ){
   float dphi = fabs( phi1 - phi2 );
   if( dphi > TMath::Pi() ) dphi = TMath::TwoPi() - dphi;
   return dphi;
+}
+
+//-------------------------------------------------------------------
+
+// based on muonIsoValuePF2012 from muonSelections.cc
+
+isovals dilepStudyLooper::muonChIsoValuePF2012 (const unsigned int imu, const float R, const int ivtx)
+{
+
+  // isolation sums
+  isovals vals;
+  vals.chiso00 = 0.;
+  vals.chiso04 = 0.;
+  vals.chiso07 = 0.;
+  vals.chiso10 = 0.;
+       
+  // loop on pfcandidates
+  for (unsigned int ipf = 0; ipf < cms2.pfcands_p4().size(); ++ipf) {
+            
+    // skip electrons and muons
+    const int particleId = abs(cms2.pfcands_particleId()[ipf]);
+    if (particleId == 11)    continue;
+    if (particleId == 13)    continue;
+
+    // deltaR between electron and cadidate
+    const float dR = dRbetweenVectors(cms2.pfcands_p4()[ipf], cms2.mus_p4()[imu]);
+    if (dR > R)              continue;
+
+    // charged hadrons closest vertex
+    // should be the primary vertex
+    if (cms2.pfcands_charge().at(ipf) != 0) {
+      //        if (particleId == 211 || particleId == 321 || particleId == 2212 || particleId == 999211) {
+      if (cms2.pfcands_vtxidx().at(ipf) != ivtx) continue;
+      if (dR < 0.0001)
+	continue;
+
+      float pt = cms2.pfcands_p4()[ipf].pt();
+      vals.chiso00 += pt;
+      if (pt > 0.4) vals.chiso04 += pt;
+      if (pt > 0.7) vals.chiso07 += pt;
+      if (pt > 1.0) vals.chiso10 += pt;
+    }
+
+  } // loop on pf cands
+
+  return vals;
 }
 

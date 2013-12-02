@@ -22,6 +22,13 @@ typedef std::vector<ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<float> > > V
 /* ------------------------------------------------------------------------- */
 /* ------------------------------------------------------------------------- */
 
+struct isovals {
+  float chiso00;
+  float chiso04;
+  float chiso07;
+  float chiso10;
+};
+
 
 class dilepStudyLooper
 {
@@ -64,6 +71,7 @@ public:
 
   // utils
   float getdphi( float phi1 , float phi2 );
+  isovals muonChIsoValuePF2012 (const unsigned int imu, const float R = 0.3, const int ivtx = 0);
 
 private:
 
@@ -98,6 +106,7 @@ private:
   TH1F* h_mm_mll;
   TH1F* h_mu_dr;
   TH2F* h_mm_mll_vs_dr;
+  TH1F* h_mm_chargeprod;
 
   TH1F* h_mu_tiso_lead_pt;
   TH1F* h_mu_tiso_subl_pt;
@@ -112,25 +121,39 @@ private:
   TH1F* h_mu_dup_lead_type;
   TH1F* h_mu_dup_subl_type;
 
+  TH1F* h_mu_pfchiso;
+  TH1F* h_mu_pfchiso_minus_chiso;
+  TH1F* h_mu_chiso04;
+  TH1F* h_mu_chiso07;
+  TH1F* h_mu_chiso10;
+
   TH1F* h_em_el_pt;
   TH1F* h_em_mu_pt;
   TH1F* h_em_el_eta;
   TH1F* h_em_mu_eta;
+  TH1F* h_em_mll;
+  TH1F* h_em_dr;
 
   TH1F* h_me_mu_pt;
   TH1F* h_me_el_pt;
   TH1F* h_me_mu_eta;
   TH1F* h_me_el_eta;
+  TH1F* h_me_mll;
+  TH1F* h_me_dr;
 
   TH1F* h_em_el_tiso_pt;
   TH1F* h_em_mu_tiso_pt;
   TH1F* h_em_el_tiso_eta;
   TH1F* h_em_mu_tiso_eta;
+  TH1F* h_em_tiso_mll;
+  TH1F* h_em_tiso_dr;
 
   TH1F* h_me_mu_tiso_pt;
   TH1F* h_me_el_tiso_pt;
   TH1F* h_me_mu_tiso_eta;
   TH1F* h_me_el_tiso_eta;
+  TH1F* h_me_tiso_mll;
+  TH1F* h_me_tiso_dr;
 
   TH1F* h_em_el_hlt_pt;
   TH1F* h_em_mu_hlt_pt;
