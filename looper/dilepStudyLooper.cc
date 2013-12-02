@@ -412,10 +412,10 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	if (requireTrigMatch) {
 	  bool matched = false;
 	  if (isEE) {
-	    matched = objectPassTrigger(els_p4().at(iel),trigname_ee);
+	    matched = objectPassTrigger(els_p4().at(iel),trigname_ee,82);
 	  } else if (isEM) {
-	    if (doEM) matched |= objectPassTrigger(els_p4().at(iel),trigname_em);
-	    if (doME) matched |= objectPassTrigger(els_p4().at(iel),trigname_me);
+	    if (doEM) matched |= objectPassTrigger(els_p4().at(iel),trigname_em,82);
+	    if (doME) matched |= objectPassTrigger(els_p4().at(iel),trigname_me,82);
 	  }
 	  if (!matched) continue;
 	}
@@ -585,10 +585,10 @@ int dilepStudyLooper::ScanChain(TChain* chain, const TString& prefix)
 	if (requireTrigMatch) {
 	  bool matched = false;
 	  if (isMM) {
-	    matched = objectPassTrigger(mus_p4().at(imu),trigname_mm) || objectPassTrigger(mus_p4().at(imu),trigname_mmtk);
+	    matched = objectPassTrigger(mus_p4().at(imu),trigname_mm,83) || objectPassTrigger(mus_p4().at(imu),trigname_mmtk,83);
 	  } else if (isEM) {
-	    if (doEM) matched |= objectPassTrigger(mus_p4().at(imu),trigname_em);
-	    if (doME) matched |= objectPassTrigger(mus_p4().at(imu),trigname_me);
+	    if (doEM) matched |= objectPassTrigger(mus_p4().at(imu),trigname_em,83);
+	    if (doME) matched |= objectPassTrigger(mus_p4().at(imu),trigname_me,83);
 	  }
 	  if (!matched) continue;
 	}
@@ -1244,7 +1244,12 @@ TString dilepStudyLooper::triggerName(const TString& triggerPattern){
 }
 
 
-bool dilepStudyLooper::objectPassTrigger(const LorentzVector &obj, const TString& trigname, float drmax ){
+bool dilepStudyLooper::objectPassTrigger(const LorentzVector &obj, const TString& trigname, int type, float drmax ){
+
+  if (type != 82 && type != 83) {
+    cout << __FILE__ << " " << __LINE__ << " Error! invalid HLT object type: " << type << endl;
+    return false;
+  }
 
   TString exact_trigname = triggerName( trigname );
 
@@ -1258,6 +1263,7 @@ bool dilepStudyLooper::objectPassTrigger(const LorentzVector &obj, const TString
   if( trigp4.size() == 0 ) return false;
 
   for (unsigned int i = 0; i < trigp4.size(); ++i){
+    if (trigid.at(i) != type) continue;
     float dr = dRbetweenVectors(trigp4[i], obj);
     if( dr < drmax ) return true;
   }

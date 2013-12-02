@@ -60,7 +60,7 @@ public:
   // trigger-object matching
   int findTriggerIndex(const TString& trigName);
   TString triggerName(const TString& triggerPattern);
-  bool objectPassTrigger(const LorentzVector &obj, const TString& trigname, float drmax = 0.1 );
+  bool objectPassTrigger(const LorentzVector &obj, const TString& trigname, int type, float drmax = 0.1 );
 
   // utils
   float getdphi( float phi1 , float phi2 );
